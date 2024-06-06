@@ -1,0 +1,1 @@
+For modules, global variables are declared using "inline" (https://community.platformio.org/t/platformio-doesnt-compile-when-header-contains-global-variables/6687/3)
