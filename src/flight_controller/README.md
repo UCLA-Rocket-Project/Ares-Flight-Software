@@ -1,1 +1,1 @@
-For modules, global variables are declared using "inline" (https://community.platformio.org/t/platformio-doesnt-compile-when-header-contains-global-variables/6687/3)
+For modules, global variables are declared using "inline" (https://community.platformio.org/t/a-new-platformio-user-coding-wrong-getting-multiple-definition-first-defined-here-errors/14004/4)
