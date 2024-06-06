@@ -1,7 +1,7 @@
 #include <Arduino.h>
 // #include <RadioLib.h>
-#include <LoRa.h>
-#include <SPI.h>
+#include "../lib/LoRa/LoRa.h"
+#include "../lib/Firmware/SPI.h"
 
 const uint8_t SCK_PIN_A = 14;
 const uint8_t MISO_PIN_A = 36;

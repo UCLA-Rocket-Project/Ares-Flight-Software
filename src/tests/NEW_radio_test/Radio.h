@@ -1,23 +1,22 @@
 #include "HAL.h"
 #include "Globals.h"
 // #include <RadioLib.h>
-#include <Lora.h>
+#include "../lib/LoRa/LoRa.h"
+// #include "Lora.h"
 
 namespace Radio {
 
     #define syncWord 0x45
     #define transmissionFreq 915E6
 
-    LoRaClass radio;
+    inline LoRaClass radio;
 
-    int lastTransmissionTime = 0;
+    inline int lastTransmissionTime = 0;
 
-    String downlink_packet = (String)"9980.00,23.71" + "," + (String)lastTransmissionTime + ",";
+    inline String test_packet = (String)"9980.00,23.71" + "," + (String)lastTransmissionTime + ",";
 
+    void setup();
 
-    void setupRadio();
-
-
-    void transmitPacket();
+    void transmit();
     
 }

@@ -5,9 +5,8 @@
 #include "Globals.h"
 
 #include <HardwareSerial.h>
-#include <SPI.h>
-
-#include <Wire.h>
+#include "../lib/Firmware/SPI.h"
+#include "../lib/Firmware/Wire.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                            Variables                                                           //
@@ -19,13 +18,13 @@ namespace HAL {
     const uint8_t VSCK_PIN = 18;
     const uint8_t VMISO_PIN = 19;
     const uint8_t VMOSI_PIN = 23;
-    SPIClass* radioSPI;
+    inline SPIClass* radioSPI;
 
     // HSPI
     const uint8_t HSCK_PIN = 14;
     const uint8_t HMISO_PIN = 36;
     const uint8_t HMOSI_PIN = 13;
-    SPIClass* sensorSPI;
+    inline SPIClass* sensorSPI;
 
     // I2C
     const uint8_t INA_ADDR = 0x40;
@@ -36,7 +35,7 @@ namespace HAL {
     const uint8_t GPS_RX_PIN = 16;
     const uint8_t GPS_TX_PIN = 17;
     const uint8_t GPS_I2C_PORT = 2; //This is not a pin
-    HardwareSerial gps_serial(GPS_I2C_PORT);
+    inline HardwareSerial gps_serial(GPS_I2C_PORT);
 
     /* ---------- Pinouts ---------- */
     // Transmitter

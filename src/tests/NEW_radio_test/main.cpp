@@ -12,7 +12,7 @@ void radioGPS(void* param) {
   while(1) {
     int oldTime = millis();
     Radio::radio.beginPacket();
-    Radio::radio.print(Radio::downlink_packet);
+    Radio::radio.print(Radio::test_packet);
     Radio::radio.endPacket();
     lastTransmissionTime = millis() - oldTime;  
     DEBUGLN("transmit");
@@ -20,7 +20,7 @@ void radioGPS(void* param) {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   #ifdef DEBUG_MODE
     while(!Serial);   
@@ -28,7 +28,7 @@ void setup() {
 
   HAL::initRadioHAL();
 
-  Radio::setupRadio();
+  Radio::setup();
 
   xTaskCreatePinnedToCore (
     radioGPS,     // Function to implement the task

@@ -1,9 +1,7 @@
 #include "Radio.h"
 
-namespace Radio {
-
-
-    void setupRadio() {
+namespace Radio{
+    void setup() {
         //replace the LoRa.begin(---E-) argument with your location's frequency 
         //915E6 for North America
 
@@ -26,15 +24,14 @@ namespace Radio {
     }
 
 
-    void transmitPacket() {
+    void transmit() {
         int oldTime = millis();
         radio.beginPacket();
-        radio.print(downlink_packet);
+        radio.print(test_packet);
         radio.endPacket();
         lastTransmissionTime = millis() - oldTime;  
         DEBUGLN("transmit");
         // DEBUGLN();
         // delay(100);
     }
-    
 }
