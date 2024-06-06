@@ -19,8 +19,17 @@ namespace Radio{
         radio.setSyncWord(syncWord);
         DEBUGLN("LoRa Initializing OK!");
 
-        // Sets the output power to 17 dbm (50 mW) with TRANSMITTER_TX_EN as the boost pin
-        radio.setTxPower(17,HAL::TRANSMITTER_TX_EN);
+        // // Sets the output power to 17 dbm with default mode of PA_BOOST for higher ones
+        // radio.setTxPower(17);
+
+
+        test_packet[0] = 0x6c;
+        test_packet[1] = 0x69;
+        test_packet[2] = 0x67;
+        test_packet[3] = 0x6d;
+        test_packet[4] = 0x61;
+
+        test_packet_length = 5;
     }
 
 
