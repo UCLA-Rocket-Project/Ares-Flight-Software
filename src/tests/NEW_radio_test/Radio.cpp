@@ -20,7 +20,7 @@ namespace Radio{
         DEBUGLN("LoRa Initializing OK!");
 
         // // Sets the output power to 17 dbm with default mode of PA_BOOST for higher ones
-        // radio.setTxPower(17);
+        radio.setTxPower(17);
 
 
         test_packet[0] = 0x6c;
@@ -35,11 +35,20 @@ namespace Radio{
 
     void transmit() {
         int oldTime = millis();
+        
+        digitalWrite(HAL::TRANSMITTER_TX_EN, HIGH);
+
         radio.beginPacket();
-        radio.print(test_packet);
-        radio.endPacket();
-        lastTransmissionTime = millis() - oldTime;  
+        // radio.print("Hello!");
+        radio.write(test_packet,test_packet_length);
+        radio.endPacket(true);
+
+        digitalWrite(HAL::TRANSMITTER_TX_EN, LOW);
+        
+        lastTransmissionTime = millis() - oldTime;
+
         DEBUGLN("transmit");
+        // DEBUGLN(ra/dio.
         // DEBUGLN();
         // delay(100);
     }

@@ -13,7 +13,7 @@ namespace Comms {
         uint8_t len;
         uint8_t timestamp[4];
         uint8_t checksum[2];
-        uint8_t data[256];
+        uint8_t data[PACKET_SIZE];
     };
 }
 

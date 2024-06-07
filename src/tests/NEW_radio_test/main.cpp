@@ -10,13 +10,10 @@ int lastTransmissionTime = 0;
 
 void radioGPS(void* param) {
   while(1) {
-    int oldTime = millis();
-    Radio::radio.beginPacket();
-    Radio::radio.print(Radio::test_packet);
-    Radio::radio.endPacket();
-    lastTransmissionTime = millis() - oldTime;  
-    DEBUGLN("transmit");
+    Radio::transmit();
+    delay(1000);
   }
+  
 }
 
 void setup() {

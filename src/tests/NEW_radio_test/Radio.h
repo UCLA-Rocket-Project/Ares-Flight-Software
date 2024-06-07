@@ -3,6 +3,7 @@
 // #include <RadioLib.h>
 #include "../lib/LoRa/LoRa.h"
 // #include "Lora.h"
+#include "Comms.h"
 
 namespace Radio {
 
