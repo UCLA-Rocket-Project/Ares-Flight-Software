@@ -2,6 +2,13 @@
 #define COMMS_H
 
 #include "globals.h"
+#include <Ethernet.h>
+#include <EthernetUdp.h>
+
+#include <Arduino.h>
+
+#include <map>
+#include <vector>
 
 namespace Comms {
 

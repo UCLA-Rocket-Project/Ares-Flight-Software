@@ -1,213 +1,168 @@
-/* Copyright 2018 Paul Stoffregen
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this
- * software and associated documentation files (the "Software"), to deal in the Software
- * without restriction, including without limitation the rights to use, copy, modify,
- * merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
- * permit persons to whom the Software is furnished to do so, subject to the following
- * conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
- * INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
- * PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
- * HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
- * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
- * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
+#include "utility/w5500.h"
+#include "utility/socket.h"
 
-#include <Arduino.h>
-#include "Ethernet.h"
+extern "C" {
+  #include "string.h"
+}
+
+#include "Arduino.h"
+
+#include "Ethernet2.h"
+#include "EthernetClient.h"
+#include "EthernetServer.h"
 #include "Dns.h"
-#include "utility/w5100.h"
 
-int EthernetClient::connect(const char * host, uint16_t port)
-{
-	DNSClient dns; // Look up the host first
-	IPAddress remote_addr;
+uint16_t EthernetClient::_srcport = 1024;
 
-	if (_sockindex < MAX_SOCK_NUM) {
-		if (Ethernet.socketStatus(_sockindex) != SnSR::CLOSED) {
-			Ethernet.socketDisconnect(_sockindex); // TODO: should we call stop()?
-		}
-		_sockindex = MAX_SOCK_NUM;
-	}
-	dns.begin(Ethernet.dnsServerIP());
-	if (!dns.getHostByName(host, remote_addr)) return 0; // TODO: use _timeout
-	return connect(remote_addr, port);
+EthernetClient::EthernetClient() : _sock(MAX_SOCK_NUM) {
 }
 
-int EthernetClient::connect(IPAddress ip, uint16_t port)
-{
-	if (_sockindex < MAX_SOCK_NUM) {
-		if (Ethernet.socketStatus(_sockindex) != SnSR::CLOSED) {
-			Ethernet.socketDisconnect(_sockindex); // TODO: should we call stop()?
-		}
-		_sockindex = MAX_SOCK_NUM;
-	}
-#if defined(ESP8266) || defined(ESP32)
-	if (ip == IPAddress((uint32_t)0) || ip == IPAddress(0xFFFFFFFFul)) return 0;
-#else
-	if (ip == IPAddress(0ul) || ip == IPAddress(0xFFFFFFFFul)) return 0;
-#endif
-	_sockindex = Ethernet.socketBegin(SnMR::TCP, 0);
-	if (_sockindex >= MAX_SOCK_NUM) return 0;
-	Ethernet.socketConnect(_sockindex, rawIPAddress(ip), port);
-	uint32_t start = millis();
-	while (1) {
-		uint8_t stat = Ethernet.socketStatus(_sockindex);
-		if (stat == SnSR::ESTABLISHED) return 1;
-		if (stat == SnSR::CLOSE_WAIT) return 1;
-		if (stat == SnSR::CLOSED) return 0;
-		if (millis() - start > _timeout) break;
-		delay(1);
-	}
-	Ethernet.socketClose(_sockindex);
-	_sockindex = MAX_SOCK_NUM;
-	return 0;
+EthernetClient::EthernetClient(uint8_t sock) : _sock(sock) {
 }
 
-int EthernetClient::availableForWrite(void)
-{
-	if (_sockindex >= MAX_SOCK_NUM) return 0;
-	return Ethernet.socketSendAvailable(_sockindex);
+int EthernetClient::connect(const char* host, uint16_t port) {
+  // Look up the host first
+  int ret = 0;
+  DNSClient dns;
+  IPAddress remote_addr;
+
+  dns.begin(Ethernet.dnsServerIP());
+  ret = dns.getHostByName(host, remote_addr);
+  if (ret == 1) {
+    return connect(remote_addr, port);
+  } else {
+    return ret;
+  }
 }
 
-size_t EthernetClient::write(uint8_t b)
-{
-	return write(&b, 1);
+int EthernetClient::connect(IPAddress ip, uint16_t port) {
+  if (_sock != MAX_SOCK_NUM)
+    return 0;
+
+  for (int i = 0; i < MAX_SOCK_NUM; i++) {
+    uint8_t s = w5500.readSnSR(i);
+    if (s == SnSR::CLOSED || s == SnSR::FIN_WAIT || s == SnSR::CLOSE_WAIT) {
+      _sock = i;
+      break;
+    }
+  }
+
+  if (_sock == MAX_SOCK_NUM)
+    return 0;
+
+  _srcport++;
+  if (_srcport == 0) _srcport = 1024;
+  socket(_sock, SnMR::TCP, _srcport, 0);
+
+  if (!::connect(_sock, rawIPAddress(ip), port)) {
+    _sock = MAX_SOCK_NUM;
+    return 0;
+  }
+
+  while (status() != SnSR::ESTABLISHED) {
+    delay(1);
+    if (status() == SnSR::CLOSED) {
+      _sock = MAX_SOCK_NUM;
+      return 0;
+    }
+  }
+
+  return 1;
 }
 
-size_t EthernetClient::write(const uint8_t *buf, size_t size)
-{
-	if (_sockindex >= MAX_SOCK_NUM) return 0;
-	if (Ethernet.socketSend(_sockindex, buf, size)) return size;
-	setWriteError();
-	return 0;
+size_t EthernetClient::write(uint8_t b) {
+  return write(&b, 1);
 }
 
-int EthernetClient::available()
-{
-	if (_sockindex >= MAX_SOCK_NUM) return 0;
-	return Ethernet.socketRecvAvailable(_sockindex);
-	// TODO: do the WIZnet chips automatically retransmit TCP ACK
-	// packets if they are lost by the network?  Someday this should
-	// be checked by a man-in-the-middle test which discards certain
-	// packets.  If ACKs aren't resent, we would need to check for
-	// returning 0 here and after a timeout do another Sock_RECV
-	// command to cause the WIZnet chip to resend the ACK packet.
+size_t EthernetClient::write(const uint8_t *buf, size_t size) {
+  if (_sock == MAX_SOCK_NUM) {
+    setWriteError();
+    return 0;
+  }
+  if (!send(_sock, buf, size)) {
+    setWriteError();
+    return 0;
+  }
+  return size;
 }
 
-int EthernetClient::read(uint8_t *buf, size_t size)
-{
-	if (_sockindex >= MAX_SOCK_NUM) return 0;
-	return Ethernet.socketRecv(_sockindex, buf, size);
+int EthernetClient::available() {
+  if (_sock != MAX_SOCK_NUM)
+    return w5500.getRXReceivedSize(_sock);
+  return 0;
 }
 
-int EthernetClient::peek()
-{
-	if (_sockindex >= MAX_SOCK_NUM) return -1;
-	if (!available()) return -1;
-	return Ethernet.socketPeek(_sockindex);
+int EthernetClient::read() {
+  uint8_t b;
+  if ( recv(_sock, &b, 1) > 0 )
+  {
+    // recv worked
+    return b;
+  }
+  else
+  {
+    // No data available
+    return -1;
+  }
 }
 
-int EthernetClient::read()
-{
-	uint8_t b;
-	if (Ethernet.socketRecv(_sockindex, &b, 1) > 0) return b;
-	return -1;
+int EthernetClient::read(uint8_t *buf, size_t size) {
+  return recv(_sock, buf, size);
 }
 
-void EthernetClient::flush()
-{
-	while (_sockindex < MAX_SOCK_NUM) {
-		uint8_t stat = Ethernet.socketStatus(_sockindex);
-		if (stat != SnSR::ESTABLISHED && stat != SnSR::CLOSE_WAIT) return;
-		if (Ethernet.socketSendAvailable(_sockindex) >= W5100.SSIZE) return;
-	}
+int EthernetClient::peek() {
+  uint8_t b;
+  // Unlike recv, peek doesn't check to see if there's any data available, so we must
+  if (!available())
+    return -1;
+  ::peek(_sock, &b);
+  return b;
 }
 
-void EthernetClient::stop()
-{
-	if (_sockindex >= MAX_SOCK_NUM) return;
-
-	// attempt to close the connection gracefully (send a FIN to other side)
-	Ethernet.socketDisconnect(_sockindex);
-	unsigned long start = millis();
-
-	// wait up to a second for the connection to close
-	do {
-		if (Ethernet.socketStatus(_sockindex) == SnSR::CLOSED) {
-			_sockindex = MAX_SOCK_NUM;
-			return; // exit the loop
-		}
-		delay(1);
-	} while (millis() - start < _timeout);
-
-	// if it hasn't closed, close it forcefully
-	Ethernet.socketClose(_sockindex);
-	_sockindex = MAX_SOCK_NUM;
+void EthernetClient::flush() {
+  ::flush(_sock);
 }
 
-uint8_t EthernetClient::connected()
-{
-	if (_sockindex >= MAX_SOCK_NUM) return 0;
+void EthernetClient::stop() {
+  if (_sock == MAX_SOCK_NUM)
+    return;
 
-	uint8_t s = Ethernet.socketStatus(_sockindex);
-	return !(s == SnSR::LISTEN || s == SnSR::CLOSED || s == SnSR::FIN_WAIT ||
-		(s == SnSR::CLOSE_WAIT && !available()));
+  // attempt to close the connection gracefully (send a FIN to other side)
+  disconnect(_sock);
+  unsigned long start = millis();
+
+  // wait a second for the connection to close
+  while (status() != SnSR::CLOSED && millis() - start < 1000)
+    delay(1);
+
+  // if it hasn't closed, close it forcefully
+  if (status() != SnSR::CLOSED)
+    close(_sock);
+
+  EthernetClass::_server_port[_sock] = 0;
+  _sock = MAX_SOCK_NUM;
 }
 
-uint8_t EthernetClient::status()
-{
-	if (_sockindex >= MAX_SOCK_NUM) return SnSR::CLOSED;
-	return Ethernet.socketStatus(_sockindex);
+uint8_t EthernetClient::connected() {
+  if (_sock == MAX_SOCK_NUM) return 0;
+  
+  uint8_t s = status();
+  return !(s == SnSR::LISTEN || s == SnSR::CLOSED || s == SnSR::FIN_WAIT ||
+    (s == SnSR::CLOSE_WAIT && !available()));
+}
+
+uint8_t EthernetClient::status() {
+  if (_sock == MAX_SOCK_NUM) return SnSR::CLOSED;
+  return w5500.readSnSR(_sock);
 }
 
 // the next function allows us to use the client returned by
 // EthernetServer::available() as the condition in an if-statement.
-bool EthernetClient::operator==(const EthernetClient& rhs)
-{
-	if (_sockindex != rhs._sockindex) return false;
-	if (_sockindex >= MAX_SOCK_NUM) return false;
-	if (rhs._sockindex >= MAX_SOCK_NUM) return false;
-	return true;
+
+EthernetClient::operator bool() {
+  return _sock != MAX_SOCK_NUM;
 }
 
-// https://github.com/per1234/EthernetMod
-// from: https://github.com/ntruchsess/Arduino-1/commit/937bce1a0bb2567f6d03b15df79525569377dabd
-uint16_t EthernetClient::localPort()
-{
-	if (_sockindex >= MAX_SOCK_NUM) return 0;
-	uint16_t port;
-	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
-	port = W5100.readSnPORT(_sockindex);
-	SPI.endTransaction();
-	return port;
-}
-
-// https://github.com/per1234/EthernetMod
-// returns the remote IP address: https://forum.arduino.cc/index.php?topic=82416.0
-IPAddress EthernetClient::remoteIP()
-{
-	if (_sockindex >= MAX_SOCK_NUM) return IPAddress((uint32_t)0);
-	uint8_t remoteIParray[4];
-	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
-	W5100.readSnDIPR(_sockindex, remoteIParray);
-	SPI.endTransaction();
-	return IPAddress(remoteIParray);
-}
-
-// https://github.com/per1234/EthernetMod
-// from: https://github.com/ntruchsess/Arduino-1/commit/ca37de4ba4ecbdb941f14ac1fe7dd40f3008af75
-uint16_t EthernetClient::remotePort()
-{
-	if (_sockindex >= MAX_SOCK_NUM) return 0;
-	uint16_t port;
-	SPI.beginTransaction(SPI_ETHERNET_SETTINGS);
-	port = W5100.readSnDPORT(_sockindex);
-	SPI.endTransaction();
-	return port;
+bool EthernetClient::operator==(const EthernetClient& rhs) {
+  return _sock == rhs._sock && _sock != MAX_SOCK_NUM && rhs._sock != MAX_SOCK_NUM;
 }
