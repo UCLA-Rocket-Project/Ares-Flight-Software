@@ -93,7 +93,16 @@ namespace ICM {
     DEBUG(",");
     DEBUG(gyro_y);
     DEBUG(",");
-    DEBUGLN(gyro_z);
-    // DEBUGLN(" radians/s");
+    DEBUG(gyro_z);
+    DEBUG(",");
+  }
+
+  void calcAngles() {
+
+    phi = atan(accel_x/accel_y)*180.0/3.141592;
+    theta = asin(accel_z/9.81)*180.0/3.141592;
+    DEBUG(phi);
+    DEBUG(",");
+    DEBUGLN(theta);
   }
 }

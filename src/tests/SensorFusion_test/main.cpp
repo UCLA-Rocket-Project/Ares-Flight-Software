@@ -21,5 +21,7 @@ void setup() {
 
 void loop() {
   ICM::readIMU();
+  ICM::calcAngles();
   delay(100);
+  
 }
