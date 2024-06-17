@@ -6,7 +6,7 @@
 
 #include <math.h>
 #include "MS5607.h"
-#include "../Firmware/Wire.h"
+#include "../Firmware/I2C/Wire.h"
 
 MS5607::MS5607(){
 

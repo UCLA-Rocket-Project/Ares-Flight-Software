@@ -5,8 +5,8 @@
 #include "Globals.h"
 
 #include <HardwareSerial.h>
-#include "../lib/Firmware/SPI.h"
-#include "../lib/Firmware/Wire.h"
+#include "Libraries/Firmware/SPI/SPI.h"
+#include "Libraries/Firmware/I2C/Wire.h"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //                                            Variables                                                           //

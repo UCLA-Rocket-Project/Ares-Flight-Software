@@ -29,7 +29,7 @@
  #include "WProgram.h"
 #endif
 
-#include "../Firmware/Wire.h"
+#include "../Firmware/I2C/Wire.h"
 
 /*=========================================================================
     I2C ADDRESSES/BITS
